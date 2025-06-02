@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Balloon Game C1.2</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        border: 1px solid #000;
+        margin-top: 20px;
+      }
+      .instructions {
+        margin-top: 20px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Balloon Pop Game</h1>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <div class="instructions">
+      <p>Use arrow keys to move the arrow</p>
+      <p>Click the mouse to pop a balloon</p>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // Game state
+      const game = {
+        dart: {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          size: 30,
+          speed: 5,
+          color: "#FF0000",
+        },
+        balloons: [],
+        keys: {
+          ArrowUp: false,
+          ArrowDown: false,
+          ArrowLeft: false,
+          ArrowRight: false,
+        },
+        score: 0,
+      };
+
+      // Initialize balloons
+      function initBalloons(count) {
+        for (let i = 0; i < count; i++) {
+          createBalloon();
+        }
+      }
+
+      // Create a new balloon at random position
+      function createBalloon() {
+        const radius = 20 + Math.random() * 20;
+        game.balloons.push({
+          x: radius + Math.random() * (canvas.width - 2 * radius),
+          y: radius + Math.random() * (canvas.height - 2 * radius),
+          radius: radius,
+          color: getRandomColor(),
+          popped: false,
+        });
+      }
+
+      // Get random color for balloons
+      function getRandomColor() {
+        const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F3"];
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
+
+      // Draw the dart (triangle)
+      function drawDart() {
+        ctx.save();
+        ctx.translate(game.dart.x, game.dart.y);
+
+        ctx.beginPath();
+        ctx.moveTo(game.dart.size, 0);
+        ctx.lineTo(-game.dart.size / 2, -game.dart.size / 2);
+        ctx.lineTo(-game.dart.size / 2, game.dart.size / 2);
+        ctx.closePath();
+        ctx.fillStyle = game.dart.color;
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // Draw all balloons
+      function drawBalloons() {
+        game.balloons.forEach((balloon) => {
+          if (!balloon.popped) {
+            ctx.beginPath();
+            ctx.arc(balloon.x, balloon.y, balloon.radius, 0, Math.PI * 2);
+            ctx.fillStyle = balloon.color;
+            ctx.fill();
+
+            // Draw balloon string
+            ctx.beginPath();
+            ctx.moveTo(balloon.x, balloon.y + balloon.radius);
+            ctx.lineTo(balloon.x, balloon.y + balloon.radius + 15);
+            ctx.strokeStyle = "#666";
+            ctx.stroke();
+          }
+        });
+      }
+
+      // Update dart position based on keyboard input
+      function updateDartPosition() {
+        if (game.keys.ArrowUp && game.dart.y - game.dart.size / 2 > 0) {
+          game.dart.y -= game.dart.speed;
+        }
+        if (
+          game.keys.ArrowDown &&
+          game.dart.y + game.dart.size / 2 < canvas.height
+        ) {
+          game.dart.y += game.dart.speed;
+        }
+        if (game.keys.ArrowLeft && game.dart.x - game.dart.size / 2 > 0) {
+          game.dart.x -= game.dart.speed;
+        }
+        if (
+          game.keys.ArrowRight &&
+          game.dart.x + game.dart.size < canvas.width
+        ) {
+          game.dart.x += game.dart.speed;
+        }
+      }
+
+      // Check collision between dart and balloons
+      function checkCollision() {
+        game.balloons.forEach((balloon) => {
+          if (!balloon.popped) {
+            // Simple distance-based collision detection
+            const dx = game.dart.x - balloon.x;
+            const dy = game.dart.y - balloon.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < balloon.radius + game.dart.size / 2) {
+              balloon.popped = true;
+              game.score++;
+              setTimeout(() => {
+                // Remove popped balloon after a delay and add a new one
+                game.balloons = game.balloons.filter((b) => b !== balloon);
+                createBalloon();
+              }, 100);
+            }
+          }
+        });
+      }
+
+      // Draw score
+      function drawScore() {
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#000";
+        ctx.fillText(`Score: ${game.score}`, 10, 30);
+      }
+
+      // Main game loop
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        updateDartPosition();
+        drawBalloons();
+        drawDart();
+        drawScore();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      // Event listeners
+      window.addEventListener("keydown", (e) => {
+        if (game.keys.hasOwnProperty(e.key)) {
+          game.keys[e.key] = true;
+        }
+      });
+
+      window.addEventListener("keyup", (e) => {
+        if (game.keys.hasOwnProperty(e.key)) {
+          game.keys[e.key] = false;
+        }
+      });
+
+      canvas.addEventListener("mousedown", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Temporarily move dart to mouse position for collision check
+        const originalX = game.dart.x;
+        const originalY = game.dart.y;
+
+        game.dart.x = mouseX;
+        game.dart.y = mouseY;
+
+        checkCollision();
+
+        // Restore dart position
+        game.dart.x = originalX;
+        game.dart.y = originalY;
+      });
+
+      // Start the game
+      initBalloons(10);
+      gameLoop();
+    </script>
+  </body>
+</html>
